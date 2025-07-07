@@ -4,7 +4,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Ensure variables are defined before creating the client
-if (!supabaseURL || !supabaseAnonkey) {
+if (!supabaseUrl || !supabaseAnonKey) {
    console.error('Supabase URL and Anon key are required for environment variables!')
 }
 
