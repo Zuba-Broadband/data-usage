@@ -1,59 +1,63 @@
-import { useState, useEffect } from 'react'
-import { useAuth } from './AuthProvider'
-import { supabase } from '../lib/supabase'
-import { Button } from './ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
-import { 
-  LogOut, 
-  Users, 
-  Database, 
-  TrendingUp, 
+import { useState, useEffect } from 'react';
+import { useAuth } from './AuthProvider';
+import { supabase } from '../lib/supabase';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import {
+  LogOut,
+  Users,
+  Database,
+  TrendingUp,
   Calendar,
   Filter,
   Download,
   Plus
-} from 'lucide-react'
-import { DataUsageChart } from './DataUsageChart'
-import { ClientsTable } from './ClientsTable'
-import { UsageFilters } from './UsageFilters'
+} from 'lucide-react';
+import { DataUsageChart } from './DataUsageChart';
+import { ClientsTable } from './ClientsTable';
+import { UsageFilters } from './UsageFilters';
+import { Alert, AlertDescription } from './ui/alert'; // Import Alert component
 
 export const Dashboard = () => {
-  const { user, signOut } = useAuth()
-  const [clients, setClients] = useState([])
-  const [dataUsage, setDataUsage] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { user, signOut } = useAuth();
+  const [clients, setClients] = useState([]);
+  const [dataUsage, setDataUsage] = useState([]);
+  const [loadingData, setLoadingData] = useState(true); // Specific loading state for data
+  const [error, setError] = useState(''); // State for errors
   const [stats, setStats] = useState({
     totalClients: 0,
     totalUsage: 0,
     currentMonthUsage: 0,
     averageUsage: 0
-  })
+  });
   const [filters, setFilters] = useState({
     clientId: '',
     startDate: '',
     endDate: '',
     minUsage: '',
     maxUsage: ''
-  })
+  });
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []); // Fetch data on initial mount
 
   useEffect(() => {
-    fetchDataUsage()
-  }, [filters])
+    fetchDataUsage();
+  }, [filters]); // Refetch data usage when filters change
 
   const fetchData = async () => {
+    setLoadingData(true); // Set loading true before fetching
+    setError(''); // Clear previous errors
     try {
       // Fetch clients
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
-        .order('name')
+        .order('name');
 
-      if (clientsError) throw clientsError
+      if (clientsError) throw clientsError;
 
       // Fetch all data usage for stats
       const { data: usageData, error: usageError } = await supabase
@@ -65,35 +69,38 @@ export const Dashboard = () => {
             email
           )
         `)
-        .order('date', { ascending: false })
+        .order('date', { ascending: false });
 
-      if (usageError) throw usageError
+      if (usageError) throw usageError;
 
-      setClients(clientsData || [])
-      setDataUsage(usageData || [])
-      
+      setClients(clientsData || []);
+      setDataUsage(usageData || []);
+
       // Calculate stats
-      const totalUsage = usageData?.reduce((sum, record) => sum + parseFloat(record.total_usage || 0), 0) || 0
-      const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM format
-      const currentMonthUsage = usageData?.filter(record => 
+      const totalUsage = usageData?.reduce((sum, record) => sum + parseFloat(record.total_usage || 0), 0) || 0;
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+      const currentMonthUsage = usageData?.filter(record =>
         record.date.startsWith(currentMonth)
-      ).reduce((sum, record) => sum + parseFloat(record.total_usage || 0), 0) || 0
+      ).reduce((sum, record) => sum + parseFloat(record.total_usage || 0), 0) || 0;
 
       setStats({
         totalClients: clientsData?.length || 0,
         totalUsage: totalUsage,
         currentMonthUsage: currentMonthUsage,
         averageUsage: clientsData?.length > 0 ? totalUsage / clientsData.length : 0
-      })
+      });
 
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('Error fetching initial data:', error);
+      setError('Failed to load initial data. Please try again.'); // Set user-friendly error
     } finally {
-      setLoading(false)
+      setLoadingData(false); // Set loading false after fetching
     }
-  }
+  };
 
   const fetchDataUsage = async () => {
+    setLoadingData(true); // Set loading true before fetching
+    setError(''); // Clear previous errors
     try {
       let query = supabase
         .from('data_usage')
@@ -103,44 +110,48 @@ export const Dashboard = () => {
             name,
             email
           )
-        `)
+        `);
 
       // Apply filters
       if (filters.clientId) {
-        query = query.eq('client_id', filters.clientId)
+        query = query.eq('client_id', filters.clientId);
       }
       if (filters.startDate) {
-        query = query.gte('date', filters.startDate)
+        query = query.gte('date', filters.startDate);
       }
       if (filters.endDate) {
-        query = query.lte('date', filters.endDate)
+        query = query.lte('date', filters.endDate);
       }
       if (filters.minUsage) {
-        query = query.gte('total_usage', parseFloat(filters.minUsage))
+        query = query.gte('total_usage', parseFloat(filters.minUsage));
       }
       if (filters.maxUsage) {
-        query = query.lte('total_usage', parseFloat(filters.maxUsage))
+        query = query.lte('total_usage', parseFloat(filters.maxUsage));
       }
 
-      query = query.order('date', { ascending: false })
+      query = query.order('date', { ascending: false });
 
-      const { data, error } = await query
+      const { data, error } = await query;
 
-      if (error) throw error
+      if (error) throw error;
 
-      setDataUsage(data || [])
+      setDataUsage(data || []);
     } catch (error) {
-      console.error('Error fetching filtered data:', error)
+      console.error('Error fetching filtered data:', error);
+      setError('Failed to fetch filtered data. Please check your filters.'); // Set user-friendly error
+    } finally {
+      setLoadingData(false); // Set loading false after fetching
     }
-  }
+  };
+
 
   const handleSignOut = async () => {
-    await signOut()
-  }
+    await signOut();
+  };
 
   const exportData = () => {
     // Create CSV content
-    const headers = ['Date', 'Client', 'Kit 1 Usage (GB)', 'Kit 2 Usage (GB)', 'Total Usage (GB)']
+    const headers = ['Date', 'Client', 'Kit 1 Usage (GB)', 'Kit 2 Usage (GB)', 'Total Usage (GB)'];
     const csvContent = [
       headers.join(','),
       ...dataUsage.map(record => [
@@ -150,25 +161,17 @@ export const Dashboard = () => {
         record.kit_2_usage,
         record.total_usage
       ].join(','))
-    ].join('\n')
+    ].join('\n');
 
     // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `zuba-broadband-usage-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zuba-broadband-usage-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -193,89 +196,105 @@ export const Dashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalClients}</div>
-              <p className="text-xs text-muted-foreground">Active clients</p>
-            </CardContent>
-          </Card>
+        {/* Error Message */}
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Usage</CardTitle>
-              <Database className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsage.toFixed(1)} GB</div>
-              <p className="text-xs text-muted-foreground">All time usage</p>
-            </CardContent>
-          </Card>
+        {/* Loading Indicator */}
+        {loadingData ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+            <span className="ml-4 text-gray-600">Loading data...</span>
+          </div>
+        ) : (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalClients}</div>
+                  <p className="text-xs text-muted-foreground">Active clients</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.currentMonthUsage.toFixed(1)} GB</div>
-              <p className="text-xs text-muted-foreground">Current month usage</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Usage</CardTitle>
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalUsage.toFixed(1)} GB</div>
+                  <p className="text-xs text-muted-foreground">All time usage</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Usage</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.averageUsage.toFixed(1)} GB</div>
-              <p className="text-xs text-muted-foreground">Per client average</p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">This Month</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.currentMonthUsage.toFixed(1)} GB</div>
+                  <p className="text-xs text-muted-foreground">Current month usage</p>
+                </CardContent>
+              </Card>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <DataUsageChart data={dataUsage} />
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Manage your data and generate reports</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button className="w-full" variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Client
-              </Button>
-              <Button className="w-full" variant="outline" onClick={exportData}>
-                <Download className="h-4 w-4 mr-2" />
-                Export Data (CSV)
-              </Button>
-              <Button className="w-full" variant="outline">
-                <Filter className="h-4 w-4 mr-2" />
-                Advanced Filters
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Average Usage</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.averageUsage.toFixed(1)} GB</div>
+                  <p className="text-xs text-muted-foreground">Per client average</p>
+                </CardContent>
+              </Card>
+            </div>
 
-        {/* Filters */}
-        <UsageFilters 
-          filters={filters} 
-          setFilters={setFilters} 
-          clients={clients}
-        />
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <DataUsageChart data={dataUsage} />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                  <CardDescription>Manage your data and generate reports</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button className="w-full" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add New Client
+                  </Button>
+                  <Button className="w-full" variant="outline" onClick={exportData}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Data (CSV)
+                  </Button>
+                  <Button className="w-full" variant="outline">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Advanced Filters
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
 
-        {/* Data Table */}
-        <ClientsTable data={dataUsage} />
+            {/* Filters */}
+            <UsageFilters
+              filters={filters}
+              setFilters={setFilters}
+              clients={clients}
+            />
+
+            {/* Data Table */}
+            <ClientsTable data={dataUsage} />
+          </>
+        )}
       </main>
     </div>
-  )
-}
-
+  );
+};
