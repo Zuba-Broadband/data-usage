@@ -1,17 +1,32 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { Filter, X } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Filter, X } from 'lucide-react';
+import { useState } from 'react'; // Import useState
+import { Alert, AlertDescription } from './ui/alert'; // Import Alert
 
 export const UsageFilters = ({ filters, setFilters, clients }) => {
+  const [filterError, setFilterError] = useState(''); // State for filter errors
+
   const handleFilterChange = (key, value) => {
+    setFilterError(''); // Clear previous errors
+    // Basic validation for numeric inputs
+    if ((key === 'minUsage' || key === 'maxUsage') && value !== '' && isNaN(parseFloat(value))) {
+      setFilterError(`Invalid value for ${key}. Please enter a number.`);
+      return;
+    }
+    if ((key === 'minUsage' || key === 'maxUsage') && parseFloat(value) < 0) {
+        setFilterError(`${key} cannot be negative.`);
+        return;
+    }
+
     setFilters(prev => ({
       ...prev,
       [key]: value
-    }))
-  }
+    }));
+  };
 
   const clearFilters = () => {
     setFilters({
@@ -20,10 +35,11 @@ export const UsageFilters = ({ filters, setFilters, clients }) => {
       endDate: '',
       minUsage: '',
       maxUsage: ''
-    })
-  }
+    });
+    setFilterError(''); // Clear errors when clearing filters
+  };
 
-  const hasActiveFilters = Object.values(filters).some(value => value !== '')
+  const hasActiveFilters = Object.values(filters).some(value => value !== '');
 
   return (
     <Card className="mb-6">
@@ -45,14 +61,19 @@ export const UsageFilters = ({ filters, setFilters, clients }) => {
             </Button>
           )}
         </div>
+        {filterError && ( // Display filter errors
+          <Alert variant="destructive" className="mt-4">
+            <AlertDescription>{filterError}</AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Client Filter */}
           <div className="space-y-2">
             <Label htmlFor="client-filter">Client</Label>
-            <Select 
-              value={filters.clientId} 
+            <Select
+              value={filters.clientId}
               onValueChange={(value) => handleFilterChange('clientId', value)}
             >
               <SelectTrigger>
@@ -154,6 +175,5 @@ export const UsageFilters = ({ filters, setFilters, clients }) => {
         )}
       </CardContent>
     </Card>
-  )
-}
-
+  );
+};
