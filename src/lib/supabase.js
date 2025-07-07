@@ -1,7 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+// Ensure variables are defined before creating the client
+if (!supabaseURL || !supabaseAnonkey) {
+   console.error('Supabase URL and Anon key are required for environment variables!')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
