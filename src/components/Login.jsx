@@ -1,37 +1,51 @@
-import { useState } from 'react'
-import { Navigate, Link } from 'react-router-dom'
-import { useAuth } from './AuthProvider'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { Label } from './ui/label'
-import { Alert, AlertDescription } from './ui/alert'
-import { Wifi } from 'lucide-react'
+import { useState } from 'react';
+import { Navigate, Link } from 'react-router-dom';
+import { useAuth } from './AuthProvider';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Label } from './ui/label';
+import { Alert, AlertDescription } from './ui/alert';
+import { Wifi } from 'lucide-react';
 
 export const Login = () => {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const { user, signIn } = useAuth()
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { user, signIn } = useAuth();
 
   if (user) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError(''); // Clear previous errors
 
-    const { error } = await signIn(email, password)
-    
-    if (error) {
-      setError(error.message)
+    // Basic client-side validation
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      setLoading(false);
+      return;
     }
-    
-    setLoading(false)
-  }
+
+    const { error: signInError } = await signIn(email, password);
+
+    if (signInError) {
+      // More specific error handling based on Supabase errors
+      if (signInError.message.includes('Invalid login credentials')) {
+        setError('Invalid email or password.');
+      } else if (signInError.message.includes('Email not confirmed')) {
+        setError('Please confirm your email address.');
+      } else {
+        setError(`Login failed: ${signInError.message}`);
+      }
+    }
+
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -54,7 +68,7 @@ export const Login = () => {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -66,7 +80,7 @@ export const Login = () => {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -78,16 +92,16 @@ export const Login = () => {
                 required
               />
             </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading} // Disable button while loading
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-          
+
           <div className="mt-4 text-center text-sm">
             Don't have an account?{' '}
             <Link to="/signup" className="text-primary hover:underline">
@@ -97,6 +111,6 @@ export const Login = () => {
         </CardContent>
       </Card>
     </div>
-  )
-}
+  );
+};
 
